@@ -1,12 +1,3 @@
-<style>
-.icon:hover {
-  opacity: 0.7;
-}
-.icon { 
-    overflow: hidden;
-    filter: grayscale(100%);
-}
-</style>
 <a href="https://www.linkedin.com/in/joel-montavon-704808a/" target="_blank"><img class="icon" width="60" height="60" src="https://content.linkedin.com/content/dam/me/brand/en-us/brand-home/logos/In-Blue-Logo.png.original.png" style="position: absolute; right: 80px; top: 10px;"></img></a>
 <a href="https://github.com/joelmontavon/pdc-python" target="_blank"><img class="icon" width="80" height="80" src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" style="position: absolute; right: 0px; top: 0px;"></img></a>
 
@@ -18,7 +9,7 @@ PDC is a more conservative estimate when patient switches between medications in
 
 To make this easier in Python, I created a general-purpose class called a DateIndexedArray. This class allows me to represent a prescription claim as a date of fill and the days supply as an array. The elements of the array can be accessed either via the index or a date. And, I've created some of functions that help with some common tasks.
 
-To calculate the PDC, we need to identify the days covered by each medication. For claims involving the same drug with overlapping days supply, we assume that the patient will finish his/her current fill before starting the refill. This means that we need to adjust for overlapping days supply which can be accomplished with the right shift operator (i.e., >>). 
+To calculate the PDC, we need to identify the days covered by each medication. For claims involving the same drug with overlapping days supply, we assume that the patient will finish his/her current fill before starting the refill. This means that we need to adjust for overlapping days supply which can be accomplished with the right shift operator (i.e., >>).
 
 For overlapping fills of different drug, we assume that the patient will start his/her new medication right away. So, we just need to sum for each index in the array which can be accomplished with the addition operator (i.e., +).
 
@@ -29,49 +20,49 @@ import numpy as np
 from functools import reduce
 
 class DateIndexedArray():
-    
+
     def __init__(self, epoch, size=365, val=1, type=float):
         self.epoch = epoch
         self.array = np.ndarray(size, type)
         self.array.fill(val)
-        
+
     def __getitem__(self, key):
         if isinstance(key, dt.datetime):
             key = (key - self.epoch).days
         return self.array.__getitem__(key)
-    
+
     def __str__(self):
         return self.epoch.strftime("%m/%d/%Y") + ': ' + self.array.__str__()
-    
+
     def reindex(self, epoch, size):
         z = DateIndexedArray(epoch, size, 0)
         offset = (self.epoch - epoch).days
         z.array[offset:offset + self.array.size] += self.array
         return z
-    
+
     def extend(self, y):
         firstDate = min([self.epoch, y.epoch])
         lastDate = max([self.epoch + dt.timedelta(days = self.array.size - 1), y.epoch + dt.timedelta(days = y.array.size - 1)])
         return self.reindex(firstDate, (lastDate - firstDate).days + 1)
-    
+
     def trim(self, start, end):
         epoch = max([self.epoch, start])
         offset = max([(epoch - self.epoch).days, 0])
         self.array = self.array[offset:offset + (end - epoch).days + 1]
         self.epoch = epoch
         return self + DateIndexedArray(self.epoch, (end - epoch).days + 1, 0)
-    
+
     def __add__(self, y):
         z = self.extend(y)
         z.array[(y.epoch - z.epoch).days:(y.epoch - z.epoch).days + y.array.size] += y.array
         return z
-    
+
     def __rshift__(self, y):
         a = self.extend(y)
         b = y.reindex(a.epoch, a.array.size)
         zero = [j for j, val in enumerate(a.array) if val == 0 or np.isnan(val)]
         nonzero = [i for i, val in enumerate(b.array) if val != 0 and not np.isnan(val)]
-        
+
         j = 0
         for i in nonzero:
             while (True):
@@ -83,11 +74,11 @@ class DateIndexedArray():
                     a.array[zero[j]] = b[i]
                     j += 1
                     break
-                else: 
+                else:
                     j += 1
 
         return a
-    
+
     def __lshift__(self, y):
         return y >> self
 ```
@@ -108,7 +99,7 @@ print("rx_clm1 >> rx_clm2: " + str(rx_clm1 >> rx_clm2))
     rx_clm2: 01/07/2022: [1. 1. 1. 1. 1. 1. 1. 1. 1. 1.]
     rx_clm1 + rx_clm2: 01/01/2022: [1. 1. 1. 1. 1. 1. 2. 2. 2. 2. 1. 1. 1. 1. 1. 1.]
     rx_clm1 >> rx_clm2: 01/01/2022: [1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.]
-    
+
 
 I wanted to keep the DateIndexedArray class general-purpose so created some functions that are specific to calculating PDC. These functions allow me to things like identify the treatment period and calculate the days in the treatment period as well as PDC.
 
@@ -306,14 +297,3 @@ df
   </tbody>
 </table>
 </div>
-
-
-
-<script>
-window.addEventListener('load', function() {
-	let message = { height: document.body.scrollHeight, width: document.body.scrollWidth };	
-
-	// window.top refers to parent window
-	window.top.postMessage(message, "*");
-});
-</script>
